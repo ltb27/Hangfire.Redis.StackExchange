@@ -46,7 +46,7 @@ namespace Hangfire.Redis.StackExchange
 
             _connectionMultiplexer = connectionMultiplexer ?? throw new ArgumentNullException(nameof(connectionMultiplexer));
             _redisOptions = ConfigurationOptions.Parse(_connectionMultiplexer.Configuration);
-            
+
             _subscription = new RedisSubscription(this, _connectionMultiplexer.GetSubscriber());
         }
 
@@ -68,17 +68,21 @@ namespace Hangfire.Redis.StackExchange
         public string ConnectionString => _connectionMultiplexer.Configuration;
 
         public int Db => _options.Db;
-        
+
         internal int SucceededListSize => _options.SucceededListSize;
 
         internal int DeletedListSize => _options.DeletedListSize;
-        
+
         internal string SubscriptionChannel => _subscription.Channel;
 
         internal string[] LifoQueues => _options.LifoQueues;
 
         internal bool UseTransactions => _options.UseTransactions;
-
+        public string GetHostName()
+        {
+            var parts = _options.Prefix.Split(':');
+            return parts.Length > 2 ? parts[1] : null;
+        }
         public override IMonitoringApi GetMonitoringApi()
         {
             return new RedisMonitoringApi(this, _connectionMultiplexer.GetDatabase(Db));
