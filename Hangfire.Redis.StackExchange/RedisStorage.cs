@@ -27,158 +27,158 @@ using StackExchange.Redis;
 
 namespace Hangfire.Redis.StackExchange
 {
-    public class RedisStorage : JobStorage
-    {
-        // Make sure in Redis Cluster all transaction are in the same slot !!
-        private readonly RedisStorageOptions _options;
-        private readonly IConnectionMultiplexer _connectionMultiplexer;
-        private readonly RedisSubscription _subscription;
-        private readonly ConfigurationOptions _redisOptions;
+   public class RedisStorage : JobStorage
+   {
+      // Make sure in Redis Cluster all transaction are in the same slot !!
+      private readonly RedisStorageOptions _options;
+      private readonly IConnectionMultiplexer _connectionMultiplexer;
+      private readonly RedisSubscription _subscription;
+      private readonly ConfigurationOptions _redisOptions;
 
-        public RedisStorage()
-            : this("localhost:6379")
-        {
-        }
+      public RedisStorage()
+          : this("localhost:6379")
+      {
+      }
 
-        public RedisStorage(IConnectionMultiplexer connectionMultiplexer, RedisStorageOptions options = null)
-        {
-            _options = options ?? new RedisStorageOptions();
+      public RedisStorage(IConnectionMultiplexer connectionMultiplexer, RedisStorageOptions options = null)
+      {
+         _options = options ?? new RedisStorageOptions();
 
-            _connectionMultiplexer = connectionMultiplexer ?? throw new ArgumentNullException(nameof(connectionMultiplexer));
-            _redisOptions = ConfigurationOptions.Parse(_connectionMultiplexer.Configuration);
+         _connectionMultiplexer = connectionMultiplexer ?? throw new ArgumentNullException(nameof(connectionMultiplexer));
+         _redisOptions = ConfigurationOptions.Parse(_connectionMultiplexer.Configuration);
 
-            _subscription = new RedisSubscription(this, _connectionMultiplexer.GetSubscriber());
-        }
+         _subscription = new RedisSubscription(this, _connectionMultiplexer.GetSubscriber());
+      }
 
-        public RedisStorage(string connectionString, RedisStorageOptions options = null)
-        {
-            if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
+      public RedisStorage(string connectionString, RedisStorageOptions options = null)
+      {
+         if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
 
-            _redisOptions = ConfigurationOptions.Parse(connectionString);
+         _redisOptions = ConfigurationOptions.Parse(connectionString);
 
-            _options = options ?? new RedisStorageOptions
-            {
-                Db = _redisOptions.DefaultDatabase ?? 0
-            };
+         _options = options ?? new RedisStorageOptions
+         {
+            Db = _redisOptions.DefaultDatabase ?? 0
+         };
 
-            _connectionMultiplexer = ConnectionMultiplexer.Connect(connectionString);
-            _subscription = new RedisSubscription(this, _connectionMultiplexer.GetSubscriber());
-        }
+         _connectionMultiplexer = ConnectionMultiplexer.Connect(connectionString);
+         _subscription = new RedisSubscription(this, _connectionMultiplexer.GetSubscriber());
+      }
 
-        public string ConnectionString => _connectionMultiplexer.Configuration;
+      public string ConnectionString => _connectionMultiplexer.Configuration;
 
-        public int Db => _options.Db;
+      public int Db => _options.Db;
 
-        internal int SucceededListSize => _options.SucceededListSize;
+      internal int SucceededListSize => _options.SucceededListSize;
 
-        internal int DeletedListSize => _options.DeletedListSize;
+      internal int DeletedListSize => _options.DeletedListSize;
 
-        internal string SubscriptionChannel => _subscription.Channel;
+      internal string SubscriptionChannel => _subscription.Channel;
 
-        internal string[] LifoQueues => _options.LifoQueues;
+      internal string[] LifoQueues => _options.LifoQueues;
 
-        internal bool UseTransactions => _options.UseTransactions;
-        public string GetHostName()
-        {
-            var parts = _options.Prefix.Split(':');
-            return parts.Length > 2 ? parts[1] : null;
-        }
-        public override IMonitoringApi GetMonitoringApi()
-        {
-            return new RedisMonitoringApi(this, _connectionMultiplexer.GetDatabase(Db));
-        }
-        public override bool HasFeature([NotNull] string featureId)
-        {
-            if (featureId == null) throw new ArgumentNullException(nameof(featureId));
+      internal bool UseTransactions => _options.UseTransactions;
+      //   public string GetHostName()
+      //   {
+      //       var parts = _options.Prefix.Split(':');
+      //       return parts.Length > 2 ? parts[1] : null;
+      //   }
+      public override IMonitoringApi GetMonitoringApi()
+      {
+         return new RedisMonitoringApi(this, _connectionMultiplexer.GetDatabase(Db));
+      }
+      public override bool HasFeature([NotNull] string featureId)
+      {
+         if (featureId == null) throw new ArgumentNullException(nameof(featureId));
 
-            //TODO: Understand this feature. Is it SqlServeronly ? Does it somehow relates to redis {prefix} ? (think of clustered environments and keys that must go only on one server)
+         //TODO: Understand this feature. Is it SqlServeronly ? Does it somehow relates to redis {prefix} ? (think of clustered environments and keys that must go only on one server)
 
-            //if (_options.UseTransactionalAcknowledge &&
-            //    featureId.StartsWith(Worker.TransactionalAcknowledgePrefix, StringComparison.OrdinalIgnoreCase))
-            //{
-            //    return featureId.Equals(
-            //        Worker.TransactionalAcknowledgePrefix + nameof(SqlServerTimeoutJob),
-            //        StringComparison.OrdinalIgnoreCase);
-            //}
+         //if (_options.UseTransactionalAcknowledge &&
+         //    featureId.StartsWith(Worker.TransactionalAcknowledgePrefix, StringComparison.OrdinalIgnoreCase))
+         //{
+         //    return featureId.Equals(
+         //        Worker.TransactionalAcknowledgePrefix + nameof(SqlServerTimeoutJob),
+         //        StringComparison.OrdinalIgnoreCase);
+         //}
 
-            if ("BatchedGetFirstByLowestScoreFromSet".Equals(featureId, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
+         if ("BatchedGetFirstByLowestScoreFromSet".Equals(featureId, StringComparison.OrdinalIgnoreCase))
+         {
+            return true;
+         }
 
-            if ("Connection.GetUtcDateTime".Equals(featureId, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
+         if ("Connection.GetUtcDateTime".Equals(featureId, StringComparison.OrdinalIgnoreCase))
+         {
+            return true;
+         }
 
-            if ("Job.Queue".Equals(featureId, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
+         if ("Job.Queue".Equals(featureId, StringComparison.OrdinalIgnoreCase))
+         {
+            return true;
+         }
 
-            return base.HasFeature(featureId);
-        }
-        public override IStorageConnection GetConnection()
-        {
-            var endPoints = _connectionMultiplexer.GetEndPoints(false);
-            IServer server = _connectionMultiplexer.GetServer(endPoints[0]);
-            return new RedisConnection(this, server, _connectionMultiplexer.GetDatabase(Db), _subscription, _options.FetchTimeout);
-        }
+         return base.HasFeature(featureId);
+      }
+      public override IStorageConnection GetConnection()
+      {
+         var endPoints = _connectionMultiplexer.GetEndPoints(false);
+         IServer server = _connectionMultiplexer.GetServer(endPoints[0]);
+         return new RedisConnection(this, server, _connectionMultiplexer.GetDatabase(Db), _subscription, _options.FetchTimeout);
+      }
 
 #pragma warning disable 618
-        public override IEnumerable<IServerComponent> GetComponents()
+      public override IEnumerable<IServerComponent> GetComponents()
 #pragma warning restore 618
-        {
-            yield return new FetchedJobsWatcher(this, _options.InvisibilityTimeout);
-            yield return new ExpiredJobsWatcher(this, _options.ExpiryCheckInterval);
-            yield return _subscription;
-        }
+      {
+         yield return new FetchedJobsWatcher(this, _options.InvisibilityTimeout);
+         yield return new ExpiredJobsWatcher(this, _options.ExpiryCheckInterval);
+         yield return _subscription;
+      }
 
-        public static DashboardMetric GetDashboardMetricFromRedisInfo(string title, string key)
-        {
-            return new DashboardMetric("redis:" + key, title, (razorPage) =>
+      public static DashboardMetric GetDashboardMetricFromRedisInfo(string title, string key)
+      {
+         return new DashboardMetric("redis:" + key, title, (razorPage) =>
+         {
+            using (var redisCnn = razorPage.Storage.GetConnection())
             {
-                using (var redisCnn = razorPage.Storage.GetConnection())
-                {
-                    var db = (redisCnn as RedisConnection).Redis;
-                    var cnnMultiplexer = db.Multiplexer;
-                    var srv = cnnMultiplexer.GetServer(db.IdentifyEndpoint());
-                    var rawInfo = srv.InfoRaw().Split('\n')
-                        .Where(x => x.Contains(':'))
-                        .ToDictionary(x => x.Split(':')[0], x => x.Split(':')[1]);
+               var db = (redisCnn as RedisConnection).Redis;
+               var cnnMultiplexer = db.Multiplexer;
+               var srv = cnnMultiplexer.GetServer(db.IdentifyEndpoint());
+               var rawInfo = srv.InfoRaw().Split('\n')
+                      .Where(x => x.Contains(':'))
+                      .ToDictionary(x => x.Split(':')[0], x => x.Split(':')[1]);
 
-                    return new Metric(rawInfo[key]);
-                }
-            });
-        }
+               return new Metric(rawInfo[key]);
+            }
+         });
+      }
 
-        public override IEnumerable<IStateHandler> GetStateHandlers()
-        {
-            yield return new FailedStateHandler();
-            yield return new ProcessingStateHandler();
-            yield return new SucceededStateHandler();
-            yield return new DeletedStateHandler();
-        }
+      public override IEnumerable<IStateHandler> GetStateHandlers()
+      {
+         yield return new FailedStateHandler();
+         yield return new ProcessingStateHandler();
+         yield return new SucceededStateHandler();
+         yield return new DeletedStateHandler();
+      }
 
-        public override void WriteOptionsToLog(ILog logger)
-        {
-            logger.Debug("Using the following options for Redis job storage:");
+      public override void WriteOptionsToLog(ILog logger)
+      {
+         logger.Debug("Using the following options for Redis job storage:");
 
-            var connectionString = _redisOptions.ToString(includePassword: false);
-            logger.DebugFormat("ConnectionString: {0}\nDN: {1}", connectionString, Db);
-        }
+         var connectionString = _redisOptions.ToString(includePassword: false);
+         logger.DebugFormat("ConnectionString: {0}\nDN: {1}", connectionString, Db);
+      }
 
-        public override string ToString()
-        {
-            var connectionString = _redisOptions.ToString(includePassword: false);
-            return string.Format("redis://{0}/{1}", connectionString, Db);
-        }
+      public override string ToString()
+      {
+         var connectionString = _redisOptions.ToString(includePassword: false);
+         return string.Format("redis://{0}/{1}", connectionString, Db);
+      }
 
-        internal string GetRedisKey([NotNull] string key)
-        {
-            if (key == null) throw new ArgumentNullException(nameof(key));
+      internal string GetRedisKey([NotNull] string key)
+      {
+         if (key == null) throw new ArgumentNullException(nameof(key));
 
-            return _options.Prefix + key;
-        }
-    }
+         return _options.Prefix + key;
+      }
+   }
 }
