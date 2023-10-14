@@ -78,11 +78,12 @@ namespace Hangfire.Redis.StackExchange
       internal string[] LifoQueues => _options.LifoQueues;
 
       internal bool UseTransactions => _options.UseTransactions;
-      //   public string GetHostName()
-      //   {
-      //       var parts = _options.Prefix.Split(':');
-      //       return parts.Length > 2 ? parts[1] : null;
-      //   }
+      
+        public string GetHostName()
+        {
+            var parts = _options.Prefix.Split(':');
+            return parts.Length > 2 ? parts[1] : null;
+        }
       public override IMonitoringApi GetMonitoringApi()
       {
          return new RedisMonitoringApi(this, _connectionMultiplexer.GetDatabase(Db));
